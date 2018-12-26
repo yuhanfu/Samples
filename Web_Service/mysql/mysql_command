@@ -1,0 +1,71 @@
+# create databse
+CREATE DATABASE twitter CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+# wrong
+CREATE DATABASE twitter CHARACTER SET utf8 COLLATE utf8_bin;
+
+# correct
+CREATE TABLE `twitter_tags` (
+  `keyword` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
+  `uid` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
+  `hashtags` varchar(1024) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
+  `count` bigint(8)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+
+CREATE TABLE `twitter_tags` (
+  `keyword` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `uid` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `hashtags` varchar(1024) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `count` bigint(8)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+
+# wrong some characters can not be load
+CREATE TABLE `twitter_tags` (
+  `keyword` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin,
+  `uid` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin,
+  `hashtags` varchar(1024) CHARACTER SET utf8 COLLATE utf8_bin,
+  `count` bigint(8)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+
+# error ERROR 1300 (HY000): Invalid utf8 character string: '[''
+CREATE TABLE twitter_tags (
+    keyword varchar(255) NOT NULL,
+    uid varchar(255) NOT NULL,
+    hashtags varchar(1024) NOT NULL,
+    count BIGINT(8) NOT NULL
+)
+CHARACTER SET utf8 COLLATE utf8_general_ci;
+
+# load data
+LOAD DATA LOCAL INFILE 'part-00000' INTO TABLE twitter_tags 
+FIELDS TERMINATED BY '\t';
+
+mysqlimport --fields-terminated-by='\t' \
+            --local -u root \
+            -p twitter \
+            twitter_test.tsv
+
+# Check database size
+SELECT table_schema "Data Base Name", 
+sum( data_length + index_length) / 1024 / 1024  "Data Base Size in MB" 
+FROM information_schema.TABLES GROUP BY table_schema;
+
+# check database charset 
+SELECT default_character_set_name FROM information_schema.SCHEMATA 
+WHERE schema_name = "twitter";
+
+# check table charset
+SELECT CCSA.character_set_name FROM information_schema.`TABLES` T,
+       information_schema.`COLLATION_CHARACTER_SET_APPLICABILITY` CCSA
+WHERE CCSA.collation_name = T.table_collation
+  AND T.table_schema = "twitter"
+  AND T.table_name = "twitter_tags";
+
+# NOTE: remove data files before indexing
+# create index
+CREATE INDEX keyword_idx ON twitter_tags (keyword)
+
+# Get maximum connections
+show variables like "max_connections";
+
+# Set maximum connections
+set global max_connections = 200;

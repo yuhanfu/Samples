@@ -1,0 +1,131 @@
+---
+# For this task, you should have one deployment for the backend code execution
+# API so the number of replications can be increased / decreased independently.
+#
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: gcp-server-deploy
+  labels:
+    app: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: server
+  template:
+    metadata:
+      labels:
+        app: server
+      namespace: default 
+    spec:
+      containers:
+        - name: server
+          image: gcr.io/yuhanf1-project0-192902/server:v3
+          ports:
+          - containerPort: 6000
+          resources:
+            requests:
+              cpu: 100m
+---
+# For this task, you should have one deployment for the frontend code execution UI
+# so the number of replications can be increased / decreased independently.
+#
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: gcp-ui-deploy
+  labels:
+    app: ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ui
+  template:
+    metadata:
+      labels:
+        app: ui
+      namespace: default
+    spec:
+      containers:
+        - name: ui 
+          image: gcr.io/yuhanf1-project0-192902/ui:v4
+          ports:
+          - containerPort: 5000
+          resources:
+            requests:
+              cpu: 100m
+---
+# You should create a service for each deployment you have created. 
+# This service should double as a Load Balancer.
+#
+apiVersion: v1
+kind: Service
+metadata:
+  name: gcp-server
+  labels:
+    app: backend
+spec:
+  selector: 
+    app: server
+  ports:
+  - port: 80
+    targetPort: 6000 
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gcp-ui
+  labels:
+    app: frontend
+spec:
+  selector: 
+    app: ui
+  ports:
+  - port: 80
+    targetPort: 5000 
+  type: LoadBalancer
+---
+# For this task you will need to define autoscaling rules pers the write up
+# to ensure that the backend pod does not exceed a certain cpu utilization.
+#
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: server-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1beta1
+    kind: Deployment
+    name: gcp-server-deploy
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: 50
+---
+# For this task you will need to define autoscaling rules pers the write up
+# to ensure that the frontend pod does not exceed a certain cpu utilization.
+#
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ui-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1beta1
+    kind: Deployment
+    name: gcp-ui-deploy
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: 50

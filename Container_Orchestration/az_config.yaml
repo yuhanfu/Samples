@@ -1,0 +1,69 @@
+---
+# For this task, you should have one deployment for the backend code execution
+# API so the number of replications can be increased / decreased independently.
+#
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: az-server-deploy
+  labels:
+    app: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: server
+  template:
+    metadata:
+      labels:
+        app: server
+      namespace: default
+    spec:
+      containers:
+        - name: server
+          image: yuhanf1task5.azurecr.io/server:v3
+          ports:
+          - containerPort: 6000
+          resources:
+            requests:
+              cpu: 100m
+      imagePullSecrets:
+        - name: task5registry
+---
+# You should create a service for each deployment you have created.
+# This service should double as a Load Balancer.
+#
+apiVersion: v1
+kind: Service
+metadata:
+  name: az-service
+  labels:
+    app: backend
+spec:
+  selector: 
+    app: server
+  ports:
+  - port: 80
+    targetPort: 6000 
+  type: LoadBalancer
+---
+# For this task you will need to define autoscaling rules pers the write up
+# to ensure that the backend pod does not exceed a certain cpu utilization.
+#
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: server-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1beta1
+    kind: Deployment
+    name: az-server-deploy
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: 50
